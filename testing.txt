@@ -1,0 +1,14 @@
+attempting P1, attempting to input 456 into "N", but 0.083 and then 228.5714 added to stack, and error "nonexistent" has occurred.  line 113 RCLx "PMT"
+attempting P1, receiving non-existent error on calculation.  line 129 RCL divide "PMT"
+
+in NSTK mode, starting program with nothing in X will fail on "Too Few Argument"
+
+P6, unable to find negative root with guess
+
+no regressions on accuracy, other than not being able to find root on P6
+
+|calculator                  |1    |1b   |2    |3    |4    |5    |6    |7    |8    |9    |10   |11   |12   | median|  mean|
+|:---------------------------|:----|:----|:----|:----|:----|:----|:----|:----|:----|:----|:----|:----|:----|------:|-----:|
+|R Rmpfr                     |Inf  |Inf  |Inf  |Inf  |NA   |Inf  |Inf  |Inf  |Inf  |Inf  |Inf  |NA   |NA   |  35.22| 33.37|
+|NSTK TVM cc6b41f            |34   |33.1 |33.2 |32.8 |Inf  |32.3 |32.5 |31.1 |39.2 |33.4 |33.4 |28.6 |Inf  |  33.06| 32.25|
+|NSTK TVM V9                 |34   |33.1 |33.2 |32.7 |Inf  |32.3 |32.5 |31.1 |39.2 |33.4 |33.4 |28.6 |Inf  |  33.06| 32.24|
