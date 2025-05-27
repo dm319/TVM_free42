@@ -126,6 +126,27 @@
 ;                  ; like storing values in START or END without setting the mode :-( 
 ;                  ; DM I got rid of a load of code which checked whether anything
 :                  : went into the alpha or not.  I'm not sure it was useful
+000 FC? 80
+000 LSTO G
+000 ALENG
+000 X=0?
+000 GTO 43
+000 FS? 80
+000 DROP
+000 FC? 80
+000 CLX
+000 
+000 FC?
+000 GTO AA
+000 CLX
+000 RCL G
+000 GTO AB
+000 LBL AA
+000 
+000 DROP
+000 FC? 80
+000 CLX
+000 RCL G
 038 ASTO "var"     ; A consecutive press occurred, MVAR placed in X
 039 XEQ IND "var"  ; XEQ the menu variable. X contains the result if a calculation was done.
 040 FC? 00         ; Check if nothing was placed in X 
@@ -596,4 +617,9 @@
 453 100
 454 ×
 455 RTN
+000 LBL 43
+000 FS? 80
+000 DROP
+000 FC? 80
+000 
 456 END
