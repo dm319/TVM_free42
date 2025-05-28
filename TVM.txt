@@ -127,10 +127,10 @@
 ;                  ; DM I got rid of a load of code which checked whether anything
 ;                  ; went into the alpha or not.  I'm not sure it was useful
 ;---;-----------------------------
-000 FC? 80         ; Check if in 4STK, if so store X, then CLX
-000 LSTO G         ; I know this is ugly
+000 FC? 80         ; check if in 4STK, if so store X, then CLX
+000 LSTO "G"       ; I know this is ugly
 000 FC? 80         ;
-000 CLX            ;
+000 CLX            ; do nothing if NSTK
 ;---;-----------------------------
 000 ALENG          ; check for exit
 000 X=0?           ;
