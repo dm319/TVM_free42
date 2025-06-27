@@ -34,7 +34,7 @@
 ;          1 → Something is returned. Used by N, I%YR, PV, PMT, FV, →AER
 ; FLAG 01  Used for temporary purposes 
 ; "p"      0 → End_Mode,   use TVM menu (which shows "START" & "END•")
-;          1 → Start_Mode, use MENU2    (which shows "STAR•" & "END")
+;          1 → Begin_Mode, use MENU2    (which shows "STAR•" & "END")
 
 ; On a first run, Plus42 doesn't need FV entered to do #1, Duncan's program does. I changed that. 
 
@@ -78,19 +78,19 @@
 ; Filter for N not being an integer and <0, PV=FV (?), PMT=0 (?), existence of required variables per function,
 ; odd values in START and END (strictly speaking they shouldn't exist)
 
-000▸LBL ":TVM" ; primary menu (START, END•) to indicate END mode
+000▸LBL "TVM" ; primary menu (START, END•) to indicate END mode
 001 MVAR "N"
 002 MVAR "I%YR"
 003 MVAR "PV"
 004 MVAR "PMT"
 005 MVAR "FV"
-006 MVAR "P/YR"
-007 MVAR "BEGIN"
-008 MVAR "END•"
-009 MVAR "IYR?"
-010 MVAR "→AER"
-011 MVAR "RESET"
-012 MVAR "CLEAR"
+006 MVAR "CLEAR"
+007 MVAR "P/YR"
+008 MVAR "BEGIN"
+009 MVAR "END•"
+010 MVAR "RESET"
+011 MVAR "IYR?"
+012 MVAR "→AER"
 013 GTO  G
 014▸LBL "MENU2" ; second menu (BEGI•, END) to indicate begin mode
 015 MVAR "N"
@@ -98,13 +98,13 @@
 017 MVAR "PV"
 018 MVAR "PMT"
 019 MVAR "FV"
-020 MVAR "P/YR"
-021 MVAR "BEGI•"
-022 MVAR "END"
-023 MVAR "IYR?"
-024 MVAR "→AER"
-025 MVAR "RESET"
-026 MVAR "CLEAR"
+020 MVAR "CLEAR"
+021 MVAR "P/YR"
+022 MVAR "BEGI•"
+023 MVAR "END"
+024 MVAR "RESET"
+025 MVAR "IYR?"
+026 MVAR "→AER"
 
 027 LBL G
 028 XEQ "RESET"    ; Main initialization. Does NOT clear all variables.
@@ -115,7 +115,7 @@
 031 FC?C 00
 032 AVIEW          ; Show the TVM state if a menu variable wasn't solved.
 033 CLA
-034 VARMENU ":TVM"
+034 VARMENU "TVM"
 035 0≠? "p"        ; select correct menu according to START or STOP mode
 036 VARMENU "MENU2"
 037 STOP 
@@ -142,9 +142,9 @@
 050 RCL "P/YR"     ; payments/year (and temporarily save X-register in "P/YR")
 051 AIP            ; append the integer part of X to the alpha register 
 052 0=? "p"
-053 ├", END mode"
+053 ├" END"
 054 0≠? "p"
-055 ├", BEGIN mode"
+055 ├" BEGIN"
 056 CLX
 057 RTN
 
@@ -176,7 +176,7 @@
 076 RTN
 ;---;--------------------------------------------------------------------------------------------
 077▸LBL "BEGIN"
-078▸LBL "BEGI•"  ; Start mode ("p"=1)
+078▸LBL "BEGI•"  ; Begin mode ("p"=1)
 ;---;--------------------------------------------------------------------------------------------
 079 FUNC 00
 080 1
@@ -334,34 +334,34 @@
 215 RCL "i"    ; ??? Changed this to return "i" vs "I%YR"
 216 RTN
 ;---;--------------------------------------------------------------------------------------------
-217▸LBL "I%YR" ;  (for Start_mode & End_mode) Consumes LBLs 24-5, 41-2, 30-7
+217▸LBL "I%YR" ;  (for Begin_mode & End_mode) Consumes LBLs 24-5, 41-2, 30-7
 ;---; Holy cow this is unbelievably complex! Consumes 10 local labels.
 ;---;--------------------------------------------------------------------------------------------
 218 FUNC 01
 219 LNSTK
 220 SF 00      ; To signify this routine returns an answer in X
 221 0=? "p"    ; (removed RCL "p", X=0?)
-222 GTO 41     ; End mode
-223 RCL "PV"   ; <---- Calculate I%YR(Start_mode)
+222 GTO 07     ; End mode
+223 RCL "PV"   ; <---- Calculate I%YR(Begin_mode)
 224 RCL+ "PMT"
 225 LSTO "pv"   ; pv = PV+PMT
 226 RCL "FV"
 227 RCL- "PMT"
 228 LSTO "fv"   ; fv = FV-PMT
-229 GTO 42
+229 GTO 08
 ;---;-----------------------
-230▸LBL 41     ; <---- Calculate I%YR(End_mode) - simply copy values
+230▸LBL 07     ; <---- Calculate I%YR(End_mode) - simply copy values
 ;---;-----------------------
 231 RCL "FV"
 232 LSTO "fv"
 233 RCL "PV"
 234 LSTO "pv"
 ;---;-----------------------
-235▸LBL 42     ; referenced by 239
+235▸LBL 08     ; referenced by 239
 ;---;-----------------------
 236 RCL "IYR?" ; needed to return this or else the guess isn't used
 237 X=0?
-238 XEQ 24     ; if not, run interest rate guess
+238 XEQ 29     ; if not, run interest rate guess
 239 STO "I%YR" ; starting interest rate,  ??? another redundant calculation of "i"
 240 RCL "P/YR"
 241 1/X
@@ -374,7 +374,7 @@
 248 LSTO "f"
 249 CLX        ; used to be DROP
 ;---;-----------------------
-250▸LBL 30     ; start of Newton solve (adapted from plus42).
+250▸LBL 09     ; start of Newton solve (adapted from plus42).
 ;              ; (+3) Spans LBLs 30-37. referenced by 380, 386, 400
 ;---;-----------------------
 251 RCL "f"
@@ -388,7 +388,7 @@
 259 +
 260 1
 261 X=Y?       ; check if i is very small by comparing 1 with 1+i^2
-262 GTO 31     ; if so switch to Secant method (do people really care about this!?)
+262 GTO 17     ; if so switch to Secant method (do people really care about this!?)
 263 DROPN 2
 264 RCL "i"
 265 LN1+X
@@ -439,9 +439,9 @@
 310 RCL+ "i"
 311 STO "i"
 312 DROP
-313 GTO 32     ; check success of iteration
+313 GTO 18     ; check success of iteration
 ;---;-----------------------
-314▸LBL 31     ; The secant method. (+1) referenced by 271
+314▸LBL 17     ; The secant method. (+1) referenced by 271
 ;---;-----------------------
 315 DROPN 2
 316 RCL "pv"
@@ -488,30 +488,30 @@
 357 STO "i"
 358 DROP
 ;---;-----------------------
-359▸LBL 32     ; (+2) referenced by 322
+359▸LBL 18     ; (+2) referenced by 322
 ;---;-----------------------
 360 RCL "g"    ; forces at least two cycles of loop
 361 X>0?
-362 GTO 34
+362 GTO 19
 363 DROP       ; this used to be GTO 35 which was only called from here so I merged it
 364 RCL "f0"
 365 ABS
 366 RCL "f"
 367 ABS
 368 X≥Y?       ; is guess worsening or same?
-369 GTO 36
+369 GTO 27
 370 DROPN 2
-371 GTO 30     ; return to start, going to 30 with nothing on the stack
+371 GTO 09     ; return to start, going to 30 with nothing on the stack
 ;---;-----------------------
-372▸LBL 34     ; Decrement "g" and GTO 30 (+1) referenced by 371  ??? there has to be a way to do DSE "g"
+372▸LBL 19     ; Decrement "g" and GTO 09 (+1) referenced by 371  ??? there has to be a way to do DSE "g"
 ;---;-----------------------
 373 1
 374 -
 375 LSTO "g"
 376 DROP
-377 GTO 30     ; going to 30 with nothing on the stack
+377 GTO 09     ; going to 30 with nothing on the stack
 ;---;-----------------------
-378▸LBL 36     ; referenced by 378
+378▸LBL 27     ; referenced by 378
 ;---;-----------------------
 379 DROPN 2
 380 RCL "eps"
@@ -522,12 +522,12 @@
 385 -
 386 RCL "i"
 387 X=Y?       ; break if good guess
-388 GTO 37
+388 GTO 28
 389 DROPN 2    ; merged in LBL 38
 390 RCL "i"
-391 GTO 30     ; going to 30 with an item on the stack  ???? (as opposed to LBL 32,34)
+391 GTO 09     ; going to 30 with an item on the stack  ???? (as opposed to LBL 32,34)
 ;---;-----------------------
-392▸LBL 37     ; referenced by 397
+392▸LBL 28     ; referenced by 397
 ;---;-----------------------
 393 DROPN 3
 394 RCL "eps"
@@ -541,7 +541,7 @@
 402 ×
 403 RTN
 ;---;-----------------------
-404▸LBL 24     ; initial interest rate guess (via Albert Chan's code). Contains LBL 25. referenced by 247
+404▸LBL 29     ; initial interest rate guess (via Albert Chan's code). Contains LBL 25. referenced by 247
 ;              ; Takes no inputs, returns a guess for I%YR
 ;---;-----------------------
 405 RCL "fv"
@@ -580,10 +580,10 @@
 438 RCL "pv"
 439 ×           ; 2 items on the stack at this point
 440 X≠0?        ; fv*pv = 0?
-441 GTO 25
+441 GTO 37
 442 DROP 
 443 RTN
-444 LBL 25
+444 LBL 37
 445 DROPN 2     ; Y-register no longer needed.  
 446 RCL "PMT"
 447 RCL÷ "fv"
