@@ -2,7 +2,7 @@
 ; #  | N  | I%YR | PV | PMT   | FV | P/YR | End ||   TVM v9    |   Plus42    |
 ;----|----|------|----|-------|----|------|-----||-------------|-------------|
 ; 01 | ?  |  5%  | 1M | -5k   | 0  |  12  | yes ||    430.9175 |    430.9175 |
-; 02 | ?  |  5%  | 1M | -2000 | 0  |  12  | no  ||    425.9790 |    425.9790 |
+; 02 | ?  |  5%  | 1M | -5k   | 0  |  12  | no  ||    425.9790 |    425.9790 |
 ; 03 | 1k |  ?   | 1M | -2000 | 0  |  12  | yes ||      1.9113 |      1.9113 |
 ; 04 | 1k |  ?   | 1M | -2000 | 0  |  12  | no  ||      1.9164 |      1.9164 |
 ; 05 | 1k |  5%  | ?  | -2000 | 0  |  12  | yes || 472493.4501 | 472493.4501 |
@@ -34,7 +34,7 @@
 ;          1 → Something is returned. Used by N, I%YR, PV, PMT, FV, →AER
 ; FLAG 01  Used for temporary purposes 
 ; "p"      0 → End_Mode,   use TVM menu (which shows "START" & "END•")
-;          1 → Start_Mode, use MENU2    (which shows "STAR•" & "END")
+;          1 → Begin_Mode, use MENU2    (which shows "STAR•" & "END")
 
 ; On a first run, Plus42 doesn't need FV entered to do #1, Duncan's program does. I changed that. 
 
@@ -79,523 +79,605 @@
 ; Filter for N not being an integer and <0, PV=FV (?), PMT=0 (?), existence of required variables per function,
 ; odd values in START and END (strictly speaking they shouldn't exist)
 
-001▸LBL ":TVM" ; primary menu (START, END•) to indicate END mode
-002 MVAR "N"
-003 MVAR "I%YR"
-004 MVAR "PV"
-005 MVAR "PMT"
-006 MVAR "FV"
+000▸LBL "TVM" ; primary menu (START, END•) to indicate END mode
+001 MVAR "N"
+002 MVAR "I%YR"
+003 MVAR "PV"
+004 MVAR "PMT"
+005 MVAR "FV"
+006 MVAR "CLEAR"
 007 MVAR "P/YR"
-008 MVAR "START"
+008 MVAR "BEGIN"
 009 MVAR "END•"
-010 MVAR "IYR?"
-011 MVAR "→AER"
-012 MVAR "RESET"
-013 MVAR "CLEAR"
-    XEQ "RESET"    ; Main initialization. Does NOT clear all variables.
-014 GTO  A
-
-015▸LBL "MENU2" ; second menu (STAR•, END) to indicate begin mode
-016 MVAR "N"
-017 MVAR "I%YR"
-018 MVAR "PV"
-019 MVAR "PMT"
-020 MVAR "FV"
+010 MVAR "RESET"
+011 MVAR "IYR?"
+012 MVAR "→AER"
+013 GTO  G
+014▸LBL "MENU2" ; second menu (BEGI•, END) to indicate begin mode
+015 MVAR "N"
+016 MVAR "I%YR"
+017 MVAR "PV"
+018 MVAR "PMT"
+019 MVAR "FV"
+020 MVAR "CLEAR"
 021 MVAR "P/YR"
-022 MVAR "STAR•"
+022 MVAR "BEGI•"
 023 MVAR "END"
-024 MVAR "IYR?"
-025 MVAR "→AER"
-026 MVAR "RESET"
-027 MVAR "CLEAR"
+024 MVAR "RESET"
+025 MVAR "IYR?"
+026 MVAR "→AER"
 
 ;---;-----------------------------
 030▸LBL A          ; MAIN RUN LOOP
 ;---;-----------------------------
-    CF 00          ; Default Flag 00 state (MVARs routines return nothing)
-    FC? 80         ; Test for NSTK
-    GTO H          ; If 4STK then all is good - just bring up VARMENU
-    DEPTH          ; If empty NSTK then put 0.00 in X because a MENUVAR store 
-    X≠0?           ;   operation when X="" makes an unrecoverable error
-    DROP
-    LBL H          ; At this point there is something guaranteed to be in X
-    X<> "P/YR"     ; Temporarily save X and load "P/YR"
-032 "P/YR="        ; Update the Alpha-register with the TVM status
-034 X<> "P/YR"     ; Restore X & "P/YR"
-035 AIP            ; append to the alpha register 
-036 0=? "p"
-037 ├", END mode"
-038 0≠? "p"
-039 ├", START mode"
-    LBL G          ; Put 0.00 in X if in NSTK with a blank X-register 
-043 AVIEW          ; Show the TVM state if a menu variable wasn't solved.
-044 CLA
-045 VARMENU ":TVM"
-046 0≠? "p"        ; select correct menu according to START or STOP mode
-047 VARMENU "MENU2"
-048 STOP
+030 XEQ "P"        ; run print subroutine
+031 FC?C 00
+032 AVIEW          ; Show the TVM state if a menu variable wasn't solved.
+033 CLA
+034 VARMNU1 "TVM"
+035 0≠? "p"        ; select correct menu according to START or STOP mode
+036 VARMNU1 "MENU2"
+037 STOP 
 ;                  ; When a VARMENU key is pressed immediately following another, it 
 ;                  ; puts MVAR in the Alpha-register and does XEQ IND MVAR from here.
 ;                  ; Otherwise it performs STO IND MVAR and a VIEW IND MVAR and doesn't 
 ;                  ; advance the program pointer. This allows dumb things   
 ;                  ; like storing values in START or END without setting the mode :-( 
-059 ASTO "var"
-060 XEQ IND "var"  ; XEQ the menu variable. X contains the result if a calculation was done.
-    FC?C 00        ; Was something was placed in X?
-    GTO A          ; No  - update the Alpha-register with the TVM status
-063 STO IND "var"  ; Yes - update the Alpha-register with the TVM result
-064 ├":"           ; Use ":" vs "=" to distinguish internal MVAR store vs MVAR result
-065 ARCL ST X
-067 GTO G
+;---;-----------------------------
+038 FC? 80         ; Check if in 4STK, if so store X, then CLX
+039 STO "G"        ; I know this is ugly
+040 FC? 80         ;
+041 CLX            ;
+;---;-----------------------------
+042 ALENG          ; check for exit
+043 X=0?           ;
+044 GTO 39         ; exit
+;---;-----------------------------
+045 FS? 80         ; if NSTK just drop
+046 DROP
+047 FC? 80         ; if 4STK return X value to stack
+048 X<> "G"
+;---;-----------------------------
+049 ASTO "var"     ; A consecutive press occurred, MVAR placed in X
+050 XEQ IND "var"  ; XEQ the menu variable. X contains the result if a calculation was done.
+051 FC? 00         ; Check if nothing was placed in X 
+052 GTO A          ; Nothing was returned
+053 STO IND "var"  ; Something was returned: save and view it
+054 ├":"           ; Use ":" vs "=" to distinguish between MVAR store and MVAR result
+055 ARCL ST X 
+056 AVIEW
+057 GTO A
+;---;--------------------------------------------------------------------------------------------
+058 LBL "P"        ; create alpha display
+;---;--------------------------------------------------------------------------------------------
+059 FUNC 00
+060 "P/YR="        ; print alpha display. show #payments/year and start/end mode.
+061 RCL "P/YR"     ; payments/year (and temporarily save X-register in "P/YR")
+062 AIP            ; append the integer part of X to the alpha register 
+063 0=? "p"
+064 ├" END"
+065 0≠? "p"
+066 ├" BEGIN"
+067 CLX
+068 RTN
 
 ;---;--------------------------------------------------------------------------------------------
-068▸LBL "RESET" ; TVM INITIALIZATION,  p=0 (END mode), FV=IYR?=RESET=0, P/YR=12
-;   ; If the X-register was BLANK it will return with 0, otherwise the stack is untouched
+069▸LBL "RESET" ; TVM INITIALIZATION,  p=0 (END mode), FV=IYR?=RESET=0, P/YR=12
+;   ; Leaves the stack untouched
+;   ; Merged old LBL 01 and RESET
 ;   ; ??? I also changed this to do FV=0 (consistent with Plus42 I think)
 ;---;--------------------------------------------------------------------------------------------
-    FUNC 00
+070 FUNC 00
 071 12
 072 STO "P/YR"   ; Set Payments/Yr to 12
-073 0
-076 STO "p"      ; Set p=0 for END mode
+073 CLX
 074 STO "FV"     ; Set FV=0
 075 STO "IYR?"   ; Set IYR?=0
+076 STO "p"
 077 RTN
 ;---;--------------------------------------------------------------------------------------------
 078▸LBL "CLEAR"  ; clear all variables and SF 00. Leaves the stack untouched
 ;---;--------------------------------------------------------------------------------------------
-    FUNC 00
+079 FUNC 00
 080 0
 081 STO "PV"
 082 STO "PMT"
-084 STO "I%YR"
-086 STO "N"
 083 STO "FV"
+084 STO "I%YR"
 085 STO "IYR?"
+086 STO "N"
 087 RTN
 ;---;--------------------------------------------------------------------------------------------
-088▸LBL "START"
-089▸LBL "STAR•"  ; Start mode ("p"=1)
+088▸LBL "BEGIN"
+089▸LBL "BEGI•"  ; Begin mode ("p"=1)
 ;---;--------------------------------------------------------------------------------------------
-    FUNC 00
-080 1
-090 STO "p"      ; Set p=1 for START mode
+090 FUNC 00
+091 1
+092 STO "p"      ; save X-register
+093 CLX
 094 RTN
 ;---;--------------------------------------------------------------------------------------------
 095▸LBL "END" 
 096▸LBL "END•"   ; End mode ("p"=0)
 ;---;--------------------------------------------------------------------------------------------
-    FUNC 00
-    0
-099 STO "p"      ; Set p=0 for END mode
-;   ; CLV "START"  ; In case those was erroneously set by the user
-;   ; CLV "STAR•"  ; In case those was erroneously set by the user
-;   ; CLV "END"    ; In case those was erroneously set by the user
-;   ; CLV "END•"   ; In case those was erroneously set by the user
-100 RTN
+097 FUNC 00
+098 0
+099 STO "p"      ; save X-register
+100 CLX
+101 RTN
 ;---;--------------------------------------------------------------------------------------------
-101▸LBL "P/YR" ; ??? Why is this needed?
+102▸LBL "P/YR" ; ??? Why is this needed?
 ;---;--------------------------------------------------------------------------------------------
-;   ; This should be OK given that the main run loop ensures X≠"" in NSTK mode
-102 STO "P/YR"
-103 RTN
+103 STO "P/YR"
+104 RTN
 ;---;--------------------------------------------------------------------------------------------
-104▸LBL "N"    ; Solve for N (for i=0 & i≠0) (+2)
+105▸LBL "N"    ; Solve for N (for i=0 & i≠0) (+2)
 ;---;--------------------------------------------------------------------------------------------
-105 FUNC 01
-106 SF 00      ; To signify this routine returns an answer in X
-107 CF 01      ; Do NOT calculate "F" (which requires "N") within XEQ I
-108 XEQ I      ; creates "i" and leaves it in X 
-109 X=0?
-110 GTO B      ; <---- Calculate N(i=0)  -(PV+FV)/PMT
-111 1/X        ; <---- Calculate N(i≠0)  -ln[(PMT*(p+1/i)+PV)/(PMT*(p+1/i)-FV)]/ln(1+i)
-112 RCL+ "p"   ; Optimized the way this formula was calculated
-113 RCL× "PMT"
-114 ENTER
-115 RCL+ "PV"
-116 X<>Y
-117 RCL- "FV"
-118 ÷
-119 LN
-120 RCL "i"
-121 LN1+X
-122 ÷
-123 +/-
-124 RTN
-125▸LBL B      ; <---- Calculate N(i=0)
-126 RCL "PV"
-127 RCL+ "FV"
-128 +/-
-129 RCL÷ "PMT" ; This is the calculated value of N
-130 RTN
+106 FUNC 01
+107 SF 00      ; To signify this routine returns an answer in X
+109 XEQ I      ; creates "i" and leaves it in X 
+110 X=0?
+111 GTO B      ; <---- Calculate N(i=0)  -(PV+FV)/PMT
+112 1/X        ; <---- Calculate N(i≠0)  -ln[(PMT*(p+1/i)+PV)/(PMT*(p+1/i)-FV)]/ln(1+i)
+113 RCL+ "p"   ; Optimized the way this formula was calculated
+114 RCL× "PMT"
+115 ENTER
+116 RCL+ "PV"
+117 X<>Y
+118 RCL- "FV"
+119 ÷
+120 LN
+121 RCL "i"
+122 LN1+X
+123 ÷
+124 +/-
+125 RTN
+126▸LBL B      ; <---- Calculate N(i=0)
+127 RCL "PV"
+128 RCL+ "FV"
+129 +/-
+130 RCL÷ "PMT" ; This is the calculated value of N
+131 RTN
 ;---;--------------------------------------------------------------------------------------------
-131▸LBL "PV"   ; Solve for PV (for i=0 & i≠0)
+132▸LBL "PV"   ; Solve for PV (for i=0 & i≠0)
 ;---;--------------------------------------------------------------------------------------------
-132 FUNC 01
-133 SF 00      ; To signify this routine returns an answer in X
-134 SF 01      ; Calculate "F" within XEQ I
-135 XEQ I      ; creates "i" & "F" and leaves "i" in X 
-136 X=0?
-137 GTO C      ; <---- Calculate PV(i=0)   -(FV+PMT*N)
-138 1/X        ; <---- Calculate PV(i≠0)   [PMT*(p+1/i)*(1-F)-FV]/F
-139 RCL+ "p"   ; Optimized the way this formula was calculated
-140 RCL× "PMT"
-141 1
-142 RCL- "F"
-143 ×
-144 RCL- "FV"
-145 RCL÷ "F"
-146 RTN
-147▸LBL C      ; <---- Calculate PV(i=0)
-148 RCL "PMT"
-149 RCL× "N"
-150 RCL+ "FV"
-151 +/-
-152 RTN
+133 FUNC 01
+134 SF 00      ; To signify this routine returns an answer in X
+135 SF 01      ; Calculate "F" within XEQ I
+136 XEQ I      ; creates "i" & "F" and leaves "i" in X 
+137 X=0?
+138 GTO C      ; <---- Calculate PV(i=0)   -(FV+PMT*N)
+139 1/X        ; <---- Calculate PV(i≠0)   [PMT*(p+1/i)*(1-F)-FV]/F
+140 RCL+ "p"   ; Optimized the way this formula was calculated
+141 RCL× "PMT"
+142 1
+143 RCL- "F"
+144 ×
+145 RCL- "FV"
+146 RCL÷ "F"
+147 RTN
+148▸LBL C      ; <---- Calculate PV(i=0)
+149 RCL "PMT"
+150 RCL× "N"
+151 RCL+ "FV"
+152 +/-
+153 RTN
 ;---;--------------------------------------------------------------------------------------------
-153▸LBL "FV"   ; Solve for FV (for i=0 & i≠0)
+154▸LBL "FV"   ; Solve for FV (for i=0 & i≠0)
 ;---;--------------------------------------------------------------------------------------------
-154 FUNC 01
-155 SF 00      ; To signify this routine returns an answer in X
-156 SF 01      ; Calculate "F" within XEQ I
-157 XEQ I      ; creates "i" & "F" and leaves "i" in X 
-158 X=0?
-159 GTO D      ; <---- Calculate FV(i=0)   -(PV+PMT*N)
-160 1/X        ; <---- Calculate FV(i≠0)   PMT*(p+1/i)*(1-F)-PV*F    merged XEQ 22
-161 RCL+ "p"   ; Optimized the way this formula was calculated
-162 RCL× "PMT"
-163 1
-164 RCL- "F"
-165 ×
-166 RCL "PV"
-167 RCL× "F"
-168 -
-169 RTN
-170▸LBL D      ; <---- Calculate FV(i=0)
-171 RCL "PMT"
-172 RCL× "N"
-173 RCL+ "PV"
-174 +/-
-175 RTN
+155 FUNC 01
+156 SF 00      ; To signify this routine returns an answer in X
+157 SF 01      ; Calculate "F" within XEQ I
+158 XEQ I      ; creates "i" & "F" and leaves "i" in X 
+159 X=0?
+160 GTO D      ; <---- Calculate FV(i=0)   -(PV+PMT*N)
+161 1/X        ; <---- Calculate FV(i≠0)   PMT*(p+1/i)*(1-F)-PV*F    merged XEQ 22
+162 RCL+ "p"   ; Optimized the way this formula was calculated
+163 RCL× "PMT"
+164 1
+165 RCL- "F"
+166 ×
+167 RCL "PV"
+168 RCL× "F"
+169 -
+170 RTN
+171▸LBL D      ; <---- Calculate FV(i=0)
+172 RCL "PMT"
+173 RCL× "N"
+174 RCL+ "PV"
+175 +/-
+176 RTN
 ;---;--------------------------------------------------------------------------------------------
-176▸LBL "PMT"  ; Solve for PMT (for i=0 & i≠0)
+177▸LBL "PMT"  ; Solve for PMT (for i=0 & i≠0)
 ;---;--------------------------------------------------------------------------------------------
-177 FUNC 01
-178 SF 00      ; To signify this routine returns an answer in X
-179 SF 01      ; Calculate "F" within XEQ I
-180 XEQ I      ; creates "i" & "F" and leaves "i" in X 
-181 X=0?
-182 GTO E      ; <---- Calculate PMT(i=0)   (FV-PV)/N
-183 1/X        ; <---- Calculate PMT(i≠0)   (PV*F+FV)/(p+1/i)/(1-F)   merged LBL 19
-184 RCL+ "p"   ; Optimized the way this formula was calculated
-185 1
-186 RCL- "F"
-187 ×
-188 RCL "PV"
-189 RCL× "F"
-190 RCL+ "FV"
-191 X<>Y
-192 ÷
-193 RTN
-194▸LBL E      ; <---- Calculate PMT(i=0)
-195 RCL "FV"
-196 RCL- "PV"
-197 RCL÷ "N"
-198 RTN
+178 FUNC 01
+179 SF 00      ; To signify this routine returns an answer in X
+180 SF 01      ; Calculate "F" within XEQ I
+181 XEQ I      ; creates "i" & "F" and leaves "i" in X 
+182 X=0?
+183 GTO E      ; <---- Calculate PMT(i=0)   (FV-PV)/N
+184 1/X        ; <---- Calculate PMT(i≠0)   (PV*F+FV)/(p+1/i)/(1-F)   merged LBL 19
+185 RCL+ "p"   ; Optimized the way this formula was calculated
+186 1
+187 RCL- "F"
+188 ×
+189 RCL "PV"
+190 RCL× "F"
+191 RCL+ "FV"
+192 X<>Y
+193 ÷
+194 RTN
+195▸LBL E      ; <---- Calculate PMT(i=0)
+196 RCL "FV"
+197 RCL- "PV"
+198 RCL÷ "N"
+199 RTN
 ;---;--------------------------------------------------------------------------------------------
-199▸LBL "→AER" ;  Calculates 100*((1+i)^"P/YR"-1)
+200▸LBL "→AER" ;  Calculates 100*((1+i)^"P/YR"-1)
 ;---;--------------------------------------------------------------------------------------------
-200 FUNC 01
-201 SF 00      ; To signify this routine returns an answer in X
-202 CF 01      ; Do NOT calculate "F" (which requires "N") within XEQ I
-203 XEQ I      ; Went this route vs calculating "i" in-place
-204 1
-205 +
-206 RCL "P/YR"
-207 Y↑X
-208 1
-209 -
-210 100
-211 ×
-212 RTN
+201 FUNC 01
+202 SF 00      ; To signify this routine returns an answer in X
+203 CF 01      ; Do NOT calculate "F" (which requires "N") within XEQ I
+204 XEQ I      ; Went this route vs calculating "i" in-place
+205 1
+206 +
+207 RCL "P/YR"
+208 Y↑X
+209 1
+210 -
+211 100
+212 ×
+213 RTN
 ;---;--------------------------------------------------------------------------------------------
-213▸LBL I   ; Calculates i = "I%YR"/100/"P/YR" and (optionally) F = (1+i)^N
+214▸LBL I   ; Calculates i = "I%YR"/100/"P/YR" and (optionally) F = (1+i)^N
 ;   ;       ; (+2), Returns with "i" in X) Called by N, FV, PV, PMT, →AER
 ;---;--------------------------------------------------------------------------------------------
-214 RCL "P/YR"
-215 1/X
-216 RCL "I%YR"
-217 %
-218 STO "i"    ; i = "I%YR"/100/"P/YR"
-219 FC? 01     ; Need to catch if "N" is defined for the RCL× "N" below
-220 RTN
-221 LN1+X
-222 RCL× "N"   ; ??? BUG if calculating N, FV, PV or PMT when "N" isn't defined yet! 1st time run 
-223 E↑X
-224 STO "F"    ; F = e^(N*ln(1+i))  <---- ??? isn't this just (1+i)^N
-225 RCL "i"    ; ??? Changed this to return "i" vs "I%YR"
-226 RTN
+215 RCL "P/YR"
+216 1/X
+217 RCL "I%YR"
+218 %
+219 STO "i"    ; i = "I%YR"/100/"P/YR"
+220 FC? 01     ; Need to catch if "N" is defined for the RCL× "N" below
+221 RTN
+222 LN1+X
+223 RCL× "N"   ; ??? BUG if calculating N, FV, PV or PMT when "N" isn't defined yet! 1st time run 
+224 E↑X
+225 STO "F"    ; F = e^(N*ln(1+i))  <---- ??? isn't this just (1+i)^N
+226 RCL "i"    ; ??? Changed this to return "i" vs "I%YR"
+227 RTN
 ;---;--------------------------------------------------------------------------------------------
-227▸LBL "I%YR" ;  (for Start_mode & End_mode) Consumes LBLs 24-5, 41-2, 30-7
-;---; Holy cow this is unbelievably complex! Consumes 10 local labels.
-;   ; This should also XEQ I
+228▸LBL "I%YR" ;  (for Begin_mode & End_mode) Consumes LBLs 24-5, 41-2, 30-7
 ;---;--------------------------------------------------------------------------------------------
-228 FUNC 01
-229 LNSTK
-230 SF 00      ; To signify this routine returns an answer in X
-231 0=? "p"    ; (removed RCL "p", X=0?)
-232 GTO 41     ; End mode
-233 RCL "PV"   ; <---- Calculate I%YR(Start_mode)
-234 RCL+ "PMT"
-235 LSTO "pv"   ; pv = PV+PMT
-236 RCL "FV"
-237 RCL- "PMT"
-238 LSTO "fv"   ; fv = FV-PMT
-239 GTO 42
+;---;            Holy cow this is unbelievably complex! Consumes 10 local labels.
+;   ;            This should also XEQ I
+;---;--------------------------------------------------------------------------------------------
+229 FUNC 01
+230 LNSTK
+231 SF 00      ; To signify this routine returns an answer in X
+232 0=? "p"    ; (removed RCL "p", X=0?)
+233 GTO 07     ; End mode
+234 RCL "PV"   ; <---- Calculate I%YR(Begin_mode)
+235 RCL+ "PMT"
+236 LSTO "pv"   ; pv = PV+PMT
+237 RCL "FV"
+238 RCL- "PMT"
+239 LSTO "fv"   ; fv = FV-PMT
+240 GTO 08
 ;---;-----------------------
-240▸LBL 41     ; <---- Calculate I%YR(End_mode) - simply copy values
+241▸LBL 07     ; <---- Calculate I%YR(End_mode) - simply copy values
 ;---;-----------------------
-241 RCL "FV"
-242 LSTO "fv"
-243 RCL "PV"
-244 LSTO "pv"
+242 RCL "FV"
+243 LSTO "fv"
+244 RCL "PV"
+245 LSTO "pv"
 ;---;-----------------------
-245▸LBL 42     ; referenced by 239
+246▸LBL 08     ; referenced by 239
 ;---;-----------------------
-246 0=? "IYR?" ; check if a guess has been input (removed RCL "IYR?", X=0?)
-247 XEQ 24     ; if not, run interest rate guess
-248 STO "I%YR" ; starting interest rate,  ??? another redundant calculation of "i"
-249 RCL "P/YR"
-250 1/X
-251 %
-252 STO "i"    ; starting i = "I%YR"/100/"P/YR"
-253 CLX 
-254 2
-255 LSTO "g"    ; force at least 2 cycles of the loop
-256 CLX
-257 LSTO "f"
-258 CLX        ; used to be DROP
+247 RCL "IYR?" ; needed to return this or else the guess isn't used
+248 X=0?
+249 XEQ 29     ; if not, run interest rate guess
+250 STO "I%YR" ; starting interest rate,  ??? another redundant calculation of "i"
+251 RCL "P/YR"
+252 1/X
+253 %
+254 STO "i"    ; starting i = "I%YR"/100/"P/YR"
+255 CLX 
+256 2
+257 LSTO "g"    ; force at least 2 cycles of the loop
+258 CLX
+259 LSTO "f"
+260 CLX        ; used to be DROP
 ;---;-----------------------
-259▸LBL 30     ; start of Newton solve (adapted from plus42).
+261▸LBL 09     ; start of Newton solve (adapted from plus42).
 ;              ; (+3) Spans LBLs 30-37. referenced by 380, 386, 400
 ;---;-----------------------
-260 RCL "f"
-261 LSTO "eps"
-262 LSTO "f0"
-263 CLX
-264 RCL "i"
-265 ENTER
-266 ×          ; ??? why not just do x^2
-267 1
-268 +
+262 RCL "f"
+263 LSTO "eps"
+264 LSTO "f0"
+265 CLX
+;---;-----------------------
+266 RCL "i"    ; check for very tiny i
+267 X↑2
+268 RCL× "N"
 269 1
-270 X=Y?       ; check if i is very small by comparing 1 with 1+i^2
-271 GTO 31     ; if so switch to Secant method (do people really care about this!?)
-272 DROPN 2
-273 RCL "i"
-274 LN1+X
-275 RCL× "N"
-276 E↑X-1
-277 RCL "i"
-278 X<>Y
+270 +
+271 1
+272 X=Y?
+273 GTO 38     ; if so switch to secant method
+274 DROPN 2
+;---;-----------------------
+275 RCL "i"    ; check for quite tiny i
+276 X↑2
+277 RCL× "N"
+278 1ᴇ10
 279 ÷
-280 DUP
-281 RCL "N"
-282 ×
-283 1
-284 -
-285 LSTO "y"
-286 DROP
-287 RCL "pv"
-288 RCL+ "fv"
-289 ×
-290 LSTO "k"
-291 RCL "pv"
-292 RCL× "i"
-293 +
-294 RCL+ "PMT"
-295 LSTO "f"
-296 DROP
-297 RCL "N"
-298 1
-299 -
-300 RCL× "i"
-301 RCL+ "y"
-302 LSTO "num"
-303 DROP
-304 RCL "i"
-305 ENTER
-306 ×
-307 RCL+ "i"
-308 LSTO "den"  ; ??? only used 3 & 7 lines later (use the stack)
+280 1
+281 +
+282 1
+283 X=Y?
+284 GTO 17     ; if so switch to quadratic method
+285 DROPN 2
+;---;-----------------------
+;              ; the newton method
+;---;-----------------------
+286 RCL "i"
+287 LN1+X
+288 RCL× "N"
+289 E↑X-1
+290 RCL "i"
+291 X<>Y
+292 ÷
+293 DUP
+294 RCL "N"
+295 ×
+296 1
+297 -
+298 LSTO "y"
+299 DROP
+300 RCL "pv"
+301 RCL+ "fv"
+302 ×
+303 LSTO "k"
+304 RCL "pv"
+305 RCL× "i"
+306 +
+307 RCL+ "PMT"
+308 LSTO "f"
 309 DROP
-310 RCL "f"
-311 RCL× "den"
-312 RCL "k"
-313 RCL× "num"
-314 RCL "pv"
-315 RCL× "den"
-316 -
-317 ÷
-318 LSTO "eps"
-319 RCL+ "i"
-320 STO "i"
-321 DROP
-322 GTO 32     ; check success of iteration
+310 RCL "N"
+311 1
+312 -
+313 RCL× "i"
+314 RCL+ "y"
+315 LSTO "num"
+316 DROP
+317 RCL "i"
+318 ENTER
+319 ×
+320 RCL+ "i"
+321 LSTO "den"  ; ??? only used 3 & 7 lines later (use the stack)
+322 DROP
+323 RCL "f"
+324 RCL× "den"
+325 RCL "k"
+326 RCL× "num"
+327 RCL "pv"
+328 RCL× "den"
+329 -
+330 ÷
+331 LSTO "eps"
+332 RCL+ "i"
+333 STO "i"
+334 DROP
+335 GTO 18     ; check success of iteration
 ;---;-----------------------
-323▸LBL 31     ; The secant method. (+1) referenced by 271
+336▸LBL 17     ; the quadratic method. (+1) referenced by 271
 ;---;-----------------------
-324 DROPN 2
-325 RCL "pv"
-326 RCL+ "fv"
-327 RCL÷ "N"
-328 LSTO "a"
-329 DROP
-330 RCL "pv"
-331 RCL- "fv"
-332 LSTO "b"
-333 DROP
-334 RCL "a"
-335 RCL+ "b"
-336 2
-337 ÷
-338 STO "fp"
-339 DROP
+337 DROPN 2
+338 RCL "pv"
+339 RCL+ "fv"
 340 RCL "N"
-341 ENTER
-342 ×
-343 1
-344 -
-345 RCL× "a"
-346 6
-347 ÷
-348 LSTO "fpp"   ; ??? only used once 8 lines later (use the stack)
-349 DROP
-350 RCL "fp"
-351 RCL× "i"
-352 RCL+ "PMT"
-353 RCL+ "a"
-354 LSTO "f"
-355 DROP
-356 RCL "fpp"
-357 RCL× "i"
-358 RCL+ "fp"
-359 LSTO "fp2"   ; ??? only used once 4 lines later (use the stack)
-360 DROP
-361 RCL "f"
-362 +/-
-363 RCL÷ "fp2"
-364 LSTO "eps"
-365 RCL+ "i"
-366 STO "i"
-367 DROP
-;---;-----------------------
-368▸LBL 32     ; (+2) referenced by 322
-;---;-----------------------
-369 RCL "g"    ; forces at least two cycles of loop
-370 X>0?
-371 GTO 34
-372 DROP       ; this used to be GTO 35 which was only called from here so I merged it
-373 RCL "f0"
-374 ABS
+341 RCL× "PMT"
+342 +
+343 RCL÷ "N"
+344 LSTO "f"
+345 RCL- "PMT"
+346 LSTO "a"
+347 DROP
+348 RCL "N"
+349 X↑2
+350 1
+351 -
+352 RCL× "a"
+353 6
+354 ÷
+355 RCL× "i"
+356 LSTO "b"
+357 DROP
+358 RCL "pv"
+359 RCL- "fv"
+360 RCL+ "a"
+361 2
+362 ÷
+363 RCL+ "b"
+364 STO "fp"
+365 DROP
+366 RCL "fp"
+367 RCL "b"
+368 2
+369 ÷
+370 -
+371 RCL× "i"
+372 RCL+ "f"
+373 LSTO "f"
+374 DROP
 375 RCL "f"
-376 ABS
-377 X≥Y?       ; is guess worsening or same?
-378 GTO 36
-379 DROPN 2
-380 GTO 30     ; return to start, going to 30 with nothing on the stack
+376 +/-
+377 RCL÷ "fp"
+378 LSTO "eps"
+379 RCL+ "i"
+380 LSTO "i"
+381 DROP
+382 GTO 18      ; check success of iteration
 ;---;-----------------------
-381▸LBL 34     ; Decrement "g" and GTO 30 (+1) referenced by 371  ??? there has to be a way to do DSE "g"
+383▸LBL 38      ; the secant method
 ;---;-----------------------
-382 1
-383 -
-384 LSTO "g"
-385 DROP
-386 GTO 30     ; going to 30 with nothing on the stack
+384 DROPN 2
+385 RCL "pv"
+386 RCL+ "fv"
+387 RCL÷ "N"
+388 LSTO "a"
+389 DROP
+390 RCL "pv"
+391 RCL- "fv"
+392 LSTO "b"
+393 DROP
+394 RCL "a"
+395 RCL+ "b"
+396 2
+397 ÷
+398 STO "fp"
+399 DROP
+400 RCL "N"
+401 ENTER
+402 ×
+403 1
+404 -
+405 RCL× "a"
+406 6
+407 ÷
+408 LSTO "fpp"
+409 DROP
+410 RCL "fp"
+411 RCL× "i"
+412 RCL+ "PMT"
+413 RCL+ "a"
+414 LSTO "f"
+415 DROP
+416 RCL "fpp"
+417 RCL× "i"
+418 RCL+ "fp"
+419 LSTO "fp2"
+420 DROP
+421 RCL "f"
+422 +/-
+423 RCL÷ "fp2"
+424 LSTO "eps"
+425 RCL+ "i"
+426 STO "i"
+427 DROP
 ;---;-----------------------
-387▸LBL 36     ; referenced by 378
+428▸LBL 18     ; (+2) referenced by 322
 ;---;-----------------------
-388 DROPN 2
-389 RCL "eps"
-390 1000
-391 ÷
-392 RCL "i"
-393 X<>Y
-394 -
-395 RCL "i"
-396 X=Y?       ; break if good guess
-397 GTO 37
-398 DROPN 2    ; merged in LBL 38
-399 RCL "i"
-400 GTO 30     ; going to 30 with an item on the stack  ???? (as opposed to LBL 32,34)
+429 RCL "g"    ; forces at least two cycles of loop
+430 X>0?
+431 GTO 19
+432 DROP       ; this used to be GTO 35 which was only called from here so I merged it
+433 RCL "f0"
+434 ABS
+435 RCL "f"
+436 ABS
+437 X≥Y?       ; is guess worsening or same?
+438 GTO 27
+439 DROPN 2
+440 GTO 09     ; return to start, going to 30 with nothing on the stack
 ;---;-----------------------
-401▸LBL 37     ; referenced by 397
+441▸LBL 19     ; Decrement "g" and GTO 09 (+1) referenced by 371  ??? there has to be a way to do DSE "g"
 ;---;-----------------------
-402 DROPN 3
-403 RCL "eps"
-404 2
-405 ÷
-406 RCL "i"
-407 X<>Y
-408 -           ; last improvement to i solve post break.
-409 RCL× "P/YR" ; i -> I%YR
-410 100
-411 ×
-412 RTN
+442 1
+443 -
+444 LSTO "g"
+445 DROP
+446 GTO 09     ; going to 30 with nothing on the stack
 ;---;-----------------------
-413▸LBL 24     ; initial interest rate guess (via Albert Chan's code). Contains LBL 25. referenced by 247
+447▸LBL 27     ; referenced by 378
+;---;-----------------------
+448 DROPN 2
+449 RCL "eps"
+450 1000
+451 ÷
+452 RCL "i"
+453 X<>Y
+454 -
+455 RCL "i"
+456 X=Y?       ; break if good guess
+457 GTO 28
+458 DROPN 2    ; merged in LBL 38
+459 RCL "i"
+460 GTO 09     ; going to 30 with an item on the stack  ???? (as opposed to LBL 32,34)
+;---;-----------------------
+461▸LBL 28     ; referenced by 397
+;---;-----------------------
+462 DROPN 3
+463 RCL "eps"
+464 2
+465 ÷
+466 RCL "i"
+467 X<>Y
+468 -           ; last improvement to i solve post break.
+469 RCL× "P/YR" ; i -> I%YR
+470 100
+471 ×
+472 RTN
+;---;-----------------------
+473▸LBL 29     ; initial interest rate guess (via Albert Chan's code). Contains LBL 25. referenced by 247
 ;              ; Takes no inputs, returns a guess for I%YR
 ;---;-----------------------
-414 RCL "fv"
-415 RCL+ "pv"
-416 RCL÷ "N"
-417 LSTO "a"    ; a = (fv+pv)/N
-418 RCL "fv"
-419 RCL- "pv"
-420 X<>Y
-421 -
-422 LSTO "b"    ; b = (fv-pv) - (fv+pv)/N
-423 DROP
-424 RCL "PMT"
-425 RCL+ "a"
-426 RCL÷ "b"
-427 LSTO "c"    ; c = PMT+a+b   ??? only used once 9 lines later (use the stack)
-428 RCL "N"
-429 X↑2
-430 RCL× "a"
-431 ×
-432 RCL÷ "b"
-433 LSTO "d"    ; d = a/b*N^2   ??? only used once 4 lines later (use the stack)
-434 3
-435 -
-436 RCL× "c"
-437 RCL "d"
-438 1.5
-439 -
-440 ÷
-441 RCL× "P/YR" ; guess = "P/YR"*c*(d-3)/(d-1.5)     (one item added to the stack)
-442 100
-443 ×           ; guess = 100*"P/YR"*c*(d-3)/(d-1.5)     (one item added to the stack)
-444 X>=0?       ; if guess is positive then return 
-445 RTN
-446 RCL "fv"    ; back up i guess (edge guess). referenced by 506 (was LBL 25)
-447 RCL "pv"
-448 ×           ; 2 items on the stack at this point
-449 X≠0?        ; fv*pv = 0?
-450 GTO 25
-451 DROP 
-452 RTN
-453 LBL 25
-454 DROPN 2     ; Y-register no longer needed.  
-455 RCL "PMT"
-456 RCL÷ "fv"
-457 RCL "PMT"
-458 +/-
-459 RCL÷ "pv"
-460 X>Y?        ; this can get cleaned up
-461 X<>Y
-462 CLX
-463 100
-464 ×
-465 RTN
-466 END
+474 RCL "fv"
+475 RCL+ "pv"
+476 RCL÷ "N"
+477 LSTO "a"    ; a = (fv+pv)/N
+478 RCL "fv"
+479 RCL- "pv"
+480 X<>Y
+481 -
+482 LSTO "b"    ; b = (fv-pv) - (fv+pv)/N
+483 DROP
+484 RCL "PMT"
+485 RCL+ "a"
+486 RCL÷ "b"
+487 LSTO "c"    ; c = PMT+a+b   ??? only used once 9 lines later (use the stack)
+488 RCL "N"
+489 X↑2
+490 RCL× "a"
+491 ×
+492 RCL÷ "b"
+493 LSTO "d"    ; d = a/b*N^2   ??? only used once 4 lines later (use the stack)
+494 3
+495 -
+496 RCL× "c"
+497 RCL "d"
+498 1.5
+499 -
+500 ÷
+501 RCL× "P/YR" ; guess = "P/YR"*c*(d-3)/(d-1.5)     (one item added to the stack)
+502 100
+503 ×           ; guess = 100*"P/YR"*c*(d-3)/(d-1.5)     (one item added to the stack)
+504 X>=0?       ; if guess is positive then return 
+505 RTN
+506 RCL "fv"    ; back up i guess (edge guess). referenced by 506 (was LBL 25)
+507 RCL "pv"
+508 ×           ; 2 items on the stack at this point
+509 X≠0?        ; fv*pv = 0?
+510 GTO 37
+511 DROP 
+512 RTN
+513 LBL 37
+514 DROPN 2     ; Y-register no longer needed.  
+515 RCL "PMT"
+516 RCL÷ "fv"
+517 RCL "PMT"
+518 +/-
+519 RCL÷ "pv"
+520 X>Y?        ; this can get cleaned up
+521 X<>Y
+522 CLX
+523 100
+524 ×
+525 RTN
+526 LBL 39      ; cleanup on exit
+527 FS? 80
+528 DROP
+529 FC? 80
+530 X<> "G"
+531 END
