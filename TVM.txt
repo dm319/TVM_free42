@@ -115,9 +115,9 @@
 031 FC?C 00
 032 AVIEW          ; Show the TVM state if a menu variable wasn't solved.
 033 CLA
-034 VARMEN1 "TVM"
+034 VARMNU1 "TVM"
 035 0≠? "p"        ; select correct menu according to START or STOP mode
-036 VARMEN1 "MENU2"
+036 VARMNU1 "MENU2"
 037 STOP 
 ;                  ; When a VARMENU key is pressed immediately following another, it 
 ;                  ; puts MVAR in the Alpha-register and does XEQ IND MVAR from here.
@@ -126,7 +126,7 @@
 ;                  ; like storing values in START or END without setting the mode :-( 
 ;---;-----------------------------
 038 FC? 80         ; Check if in 4STK, if so store X, then CLX
-039 LSTO G         ; I know this is ugly
+039 STO "G"        ; I know this is ugly
 040 FC? 80         ;
 041 CLX            ;
 ;---;-----------------------------
