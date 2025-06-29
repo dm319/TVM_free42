@@ -2,7 +2,7 @@
 ; #  | N  | I%YR | PV | PMT   | FV | P/YR | End ||   TVM v9    |   Plus42    |
 ;----|----|------|----|-------|----|------|-----||-------------|-------------|
 ; 01 | ?  |  5%  | 1M | -5k   | 0  |  12  | yes ||    430.9175 |    430.9175 |
-; 02 | ?  |  5%  | 1M | -2000 | 0  |  12  | no  ||    425.9790 |    425.9790 |
+; 02 | ?  |  5%  | 1M | -5k   | 0  |  12  | no  ||    425.9790 |    425.9790 |
 ; 03 | 1k |  ?   | 1M | -2000 | 0  |  12  | yes ||      1.9113 |      1.9113 |
 ; 04 | 1k |  ?   | 1M | -2000 | 0  |  12  | no  ||      1.9164 |      1.9164 |
 ; 05 | 1k |  5%  | ?  | -2000 | 0  |  12  | yes || 472493.4501 | 472493.4501 |
@@ -381,15 +381,31 @@
 252 LSTO "eps"
 253 LSTO "f0"
 254 CLX
-255 RCL "i"
-256 ENTER
-257 ×          ; ??? why not just do x^2
-258 1
-259 +
-260 1
-261 X=Y?       ; check if i is very small by comparing 1 with 1+i^2
-262 GTO 17     ; if so switch to Secant method (do people really care about this!?)
+;---;-----------------------
+256 RCL "i"    ; check for very tiny i
+257 X↑2
+258 RCL× "N"
+259 1
+260 +
+261 1
+262 X=Y?
+263 GTO 38     ; if so switch to secant method
+264 DROPN 2
+;---;-----------------------
+265 RCL "i"    ; check for quite tiny i
+266 X↑2
+267 RCL× "N"
+268 1ᴇ10
+269 ÷
+270 1
+271 +
+272 1
+273 X=Y?
+274 GTO 17     ; if so switch to quadratic method
 263 DROPN 2
+;---;-----------------------
+;              ; the newton method
+;---;-----------------------
 264 RCL "i"
 265 LN1+X
 266 RCL× "N"
@@ -441,52 +457,102 @@
 312 DROP
 313 GTO 18     ; check success of iteration
 ;---;-----------------------
-314▸LBL 17     ; The secant method. (+1) referenced by 271
+314▸LBL 17     ; the quadratic method. (+1) referenced by 271
 ;---;-----------------------
-315 DROPN 2
-316 RCL "pv"
-317 RCL+ "fv"
-318 RCL÷ "N"
-319 LSTO "a"
-320 DROP
-321 RCL "pv"
-322 RCL- "fv"
-323 LSTO "b"
-324 DROP
-325 RCL "a"
-326 RCL+ "b"
-327 2
-328 ÷
-329 STO "fp"
-330 DROP
+328 DROPN 2
+329 RCL "pv"
+330 RCL+ "fv"
 331 RCL "N"
-332 ENTER
-333 ×
-334 1
-335 -
-336 RCL× "a"
-337 6
-338 ÷
-339 LSTO "fpp"   ; ??? only used once 8 lines later (use the stack)
-340 DROP
-341 RCL "fp"
-342 RCL× "i"
-343 RCL+ "PMT"
-344 RCL+ "a"
-345 LSTO "f"
-346 DROP
-347 RCL "fpp"
-348 RCL× "i"
-349 RCL+ "fp"
-350 LSTO "fp2"   ; ??? only used once 4 lines later (use the stack)
-351 DROP
-352 RCL "f"
-353 +/-
-354 RCL÷ "fp2"
-355 LSTO "eps"
-356 RCL+ "i"
-357 STO "i"
-358 DROP
+332 RCL× "PMT"
+333 +
+334 RCL÷ "N"
+335 LSTO "f"
+336 RCL- "PMT"
+337 LSTO "a"
+338 DROP
+339 RCL "N"
+340 X↑2
+341 1
+342 -
+343 RCL× "a"
+344 6
+345 ÷
+346 RCL× "i"
+347 LSTO "b"
+348 DROP
+349 RCL "pv"
+350 RCL- "fv"
+351 RCL+ "a"
+352 2
+353 ÷
+354 RCL+ "b"
+355 STO "fp"
+356 DROP
+357 RCL "fp"
+358 RCL "b"
+359 2
+360 ÷
+361 -
+362 RCL× "i"
+363 RCL+ "f"
+364 LSTO "f"
+365 DROP
+366 RCL "f"
+367 +/-
+368 RCL÷ "fp"
+369 LSTO "eps"
+370 RCL+ "i"
+371 LSTO "i"
+372 DROP
+373 GTO 18      ; check success of iteration
+;---;-----------------------
+374▸LBL 38      ; the secant method
+;---;-----------------------
+375 STOP
+376 DROPN 2
+377 RCL "pv"
+378 RCL+ "fv"
+379 RCL÷ "N"
+380 LSTO "a"
+381 DROP
+382 RCL "pv"
+383 RCL- "fv"
+384 LSTO "b"
+385 DROP
+386 RCL "a"
+387 RCL+ "b"
+388 2
+389 ÷
+390 STO "fp"
+391 DROP
+392 RCL "N"
+393 ENTER
+394 ×
+395 1
+396 -
+397 RCL× "a"
+398 6
+399 ÷
+400 LSTO "fpp"
+401 DROP
+402 RCL "fp"
+403 RCL× "i"
+404 RCL+ "PMT"
+405 RCL+ "a"
+406 LSTO "f"
+407 DROP
+408 RCL "fpp"
+409 RCL× "i"
+410 RCL+ "fp"
+411 LSTO "fp2"
+412 DROP
+413 RCL "f"
+414 +/-
+415 RCL÷ "fp2"
+416 LSTO "eps"
+417 RCL+ "i"
+418 STO "i"
+419 DROP
 ;---;-----------------------
 359▸LBL 18     ; (+2) referenced by 322
 ;---;-----------------------
